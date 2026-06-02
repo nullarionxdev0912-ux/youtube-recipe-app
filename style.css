@@ -508,6 +508,31 @@ body {
 
 @keyframes spin { to { transform: rotate(360deg); } }
 
+/* Page Block */
+.page-block { margin-bottom: 8px; }
+
+.page-divider {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin: 20px 0 14px;
+}
+
+.page-divider::before,
+.page-divider::after {
+  content: '';
+  flex: 1;
+  height: 1px;
+  background: var(--border);
+}
+
+.page-divider span {
+  font-size: 12px;
+  font-weight: 700;
+  color: var(--text-muted);
+  white-space: nowrap;
+}
+
 /* Load More */
 .load-more-btn {
   display: block;

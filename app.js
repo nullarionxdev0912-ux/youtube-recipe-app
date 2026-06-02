@@ -4,7 +4,7 @@ const YT_API_BASE = 'https://www.googleapis.com/youtube/v3';
 let apiKey = '';
 let lastQuery = '';
 let nextPageToken = null;
-let allVideos = [];
+let videoPages = []; // array of pages, each page is an array of videos
 
 // ---- Init ----
 function init() {
@@ -83,14 +83,14 @@ async function handleSearch() {
   if (!q) return;
   lastQuery = q;
   nextPageToken = null;
-  allVideos = [];
+  videoPages = [];
   setLoading(true);
   try {
     const { videos, nextToken } = await searchVideos(q, null);
     nextPageToken = nextToken;
     const withRecipe = await enrichWithRecipeInfo(videos);
-    allVideos = withRecipe;
-    renderVideoList(allVideos, !!nextPageToken);
+    videoPages = [withRecipe];
+    renderAllPages(videoPages, !!nextPageToken);
   } catch (e) {
     renderError(e.message);
   } finally {
@@ -105,8 +105,8 @@ async function handleLoadMore() {
     const { videos, nextToken } = await searchVideos(lastQuery, nextPageToken);
     nextPageToken = nextToken;
     const withRecipe = await enrichWithRecipeInfo(videos);
-    allVideos = allVideos.concat(withRecipe);
-    renderVideoList(allVideos, !!nextPageToken);
+    videoPages.push(withRecipe);
+    renderAllPages(videoPages, !!nextPageToken);
   } catch (e) {
     renderError(e.message);
   } finally {
@@ -200,16 +200,13 @@ async function fetchVideoById(videoId) {
   };
 }
 
-// ---- Render List ----
-function renderVideoList(videos, hasMore = false) {
+// ---- Render All Pages ----
+function renderAllPages(pages, hasMore = false) {
   const container = document.getElementById('results');
-  if (!videos.length) {
+  if (!pages.length || !pages[0].length) {
     container.innerHTML = '<div class="empty-state"><div class="empty-icon">😔</div><p>動画が見つかりませんでした</p></div>';
     return;
   }
-
-  const withRecipe = videos.filter(v => v.hasRecipe);
-  const noRecipe = videos.filter(v => !v.hasRecipe);
 
   const cardHtml = (v) => `
     <div class="video-card ${v.hasRecipe ? '' : 'no-recipe-card'}" data-id="${v.id}">
@@ -229,17 +226,25 @@ function renderVideoList(videos, hasMore = false) {
     </div>
   `;
 
-  let html = '';
+  const pageHtml = (videos, pageIndex) => {
+    const withRecipe = videos.filter(v => v.hasRecipe);
+    const noRecipe = videos.filter(v => !v.hasRecipe);
+    const label = pageIndex === 0 ? '最初の50件' : `追加${pageIndex * 50 + 1}〜${(pageIndex + 1) * 50}件`;
+    let html = `<div class="page-block">
+      <div class="page-divider"><span>${label}</span></div>`;
+    if (withRecipe.length) {
+      html += `<p class="section-title">🍳 レシピあり（${withRecipe.length}件）</p>
+        <div class="video-list">${withRecipe.map(cardHtml).join('')}</div>`;
+    }
+    if (noRecipe.length) {
+      html += `<p class="section-title" style="margin-top:16px">📄 説明欄にレシピなし（${noRecipe.length}件）</p>
+        <div class="video-list">${noRecipe.map(cardHtml).join('')}</div>`;
+    }
+    html += `</div>`;
+    return html;
+  };
 
-  if (withRecipe.length) {
-    html += `<p class="section-title">🍳 レシピあり（${withRecipe.length}件）</p>
-      <div class="video-list">${withRecipe.map(cardHtml).join('')}</div>`;
-  }
-
-  if (noRecipe.length) {
-    html += `<p class="section-title" style="margin-top:24px">📄 説明欄にレシピなし（${noRecipe.length}件）</p>
-      <div class="video-list">${noRecipe.map(cardHtml).join('')}</div>`;
-  }
+  let html = pages.map((page, i) => pageHtml(page, i)).join('');
 
   if (hasMore) {
     html += `<button id="load-more-btn" class="load-more-btn">さらに50件読み込む</button>`;
