@@ -81,7 +81,9 @@ async function handleSearch() {
   setLoading(true);
   try {
     const videos = await searchVideos(q);
-    renderVideoList(videos);
+    // Batch-fetch full descriptions to check for recipe content
+    const withRecipe = await enrichWithRecipeInfo(videos);
+    renderVideoList(withRecipe);
   } catch (e) {
     renderError(e.message);
   } finally {
@@ -102,6 +104,26 @@ async function searchVideos(query) {
   }));
 }
 
+async function enrichWithRecipeInfo(videos) {
+  const ids = videos.map(v => v.id).join(',');
+  const url = `${YT_API_BASE}/videos?part=snippet&id=${ids}&key=${apiKey}`;
+  const res = await fetch(url);
+  const data = await res.json();
+  if (data.error) throw new Error(data.error.message);
+
+  const descMap = {};
+  for (const item of data.items) {
+    descMap[item.id] = item.snippet.description || '';
+  }
+
+  return videos.map(v => {
+    const description = descMap[v.id] || '';
+    const recipe = parseRecipe(description);
+    const hasRecipe = recipe.ingredients.length > 0 || recipe.steps.length > 0;
+    return { ...v, description, hasRecipe };
+  });
+}
+
 // ---- URL ----
 async function handleUrl() {
   const raw = document.getElementById('url-input').value.trim();
@@ -113,6 +135,8 @@ async function handleUrl() {
   setLoading(true);
   try {
     const video = await fetchVideoById(videoId);
+    const recipe = parseRecipe(video.description || '');
+    video.hasRecipe = recipe.ingredients.length > 0 || recipe.steps.length > 0;
     renderVideoList([video]);
   } catch (e) {
     renderError(e.message);
@@ -159,21 +183,39 @@ function renderVideoList(videos) {
     return;
   }
 
-  const html = `
-    <p class="section-title">${videos.length}件の動画</p>
-    <div class="video-list">
-      ${videos.map(v => `
-        <div class="video-card" data-id="${v.id}">
-          <img class="video-thumb" src="${v.thumbnail}" alt="" loading="lazy" />
-          <div class="video-info">
-            <div class="video-title">${escHtml(v.title)}</div>
-            <div class="video-channel">${escHtml(v.channel)}</div>
-            <span class="recipe-badge">🍳 レシピを確認</span>
-          </div>
-        </div>
-      `).join('')}
+  const withRecipe = videos.filter(v => v.hasRecipe);
+  const noRecipe = videos.filter(v => !v.hasRecipe);
+
+  const cardHtml = (v) => `
+    <div class="video-card ${v.hasRecipe ? '' : 'no-recipe-card'}" data-id="${v.id}">
+      <div class="thumb-wrap">
+        <img class="video-thumb" src="${v.thumbnail}" alt="" loading="lazy" />
+        ${v.hasRecipe
+          ? `<span class="thumb-badge badge-yes">✓ レシピあり</span>`
+          : `<span class="thumb-badge badge-no">レシピなし</span>`}
+      </div>
+      <div class="video-info">
+        <div class="video-title">${escHtml(v.title)}</div>
+        <div class="video-channel">${escHtml(v.channel)}</div>
+        ${v.hasRecipe
+          ? `<span class="recipe-badge">🍳 材料・手順を見る</span>`
+          : `<span class="recipe-badge no-recipe-badge">▶ YouTubeで確認</span>`}
+      </div>
     </div>
   `;
+
+  let html = '';
+
+  if (withRecipe.length) {
+    html += `<p class="section-title">🍳 レシピあり（${withRecipe.length}件）</p>
+      <div class="video-list">${withRecipe.map(cardHtml).join('')}</div>`;
+  }
+
+  if (noRecipe.length) {
+    html += `<p class="section-title" style="margin-top:24px">📄 説明欄にレシピなし（${noRecipe.length}件）</p>
+      <div class="video-list">${noRecipe.map(cardHtml).join('')}</div>`;
+  }
+
   container.innerHTML = html;
 
   container.querySelectorAll('.video-card').forEach(card => {
