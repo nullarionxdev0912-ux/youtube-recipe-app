@@ -115,7 +115,7 @@ async function handleLoadMore() {
 }
 
 async function searchVideos(query, pageToken) {
-  let url = `${YT_API_BASE}/search?part=snippet&q=${encodeURIComponent(query + ' レシピ 作り方')}&type=video&maxResults=15&key=${apiKey}&relevanceLanguage=ja`;
+  let url = `${YT_API_BASE}/search?part=snippet&q=${encodeURIComponent(query + ' レシピ 作り方')}&type=video&maxResults=50&key=${apiKey}&relevanceLanguage=ja`;
   if (pageToken) url += `&pageToken=${pageToken}`;
   const res = await fetch(url);
   const data = await res.json();
@@ -242,7 +242,7 @@ function renderVideoList(videos, hasMore = false) {
   }
 
   if (hasMore) {
-    html += `<button id="load-more-btn" class="load-more-btn">さらに15件読み込む</button>`;
+    html += `<button id="load-more-btn" class="load-more-btn">さらに50件読み込む</button>`;
   }
 
   container.innerHTML = html;
