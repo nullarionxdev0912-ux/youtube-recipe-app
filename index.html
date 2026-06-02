@@ -1,0 +1,93 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0" />
+  <meta name="apple-mobile-web-app-capable" content="yes" />
+  <meta name="apple-mobile-web-app-status-bar-style" content="default" />
+  <meta name="apple-mobile-web-app-title" content="レシピ動画" />
+  <title>YouTube レシピ検索</title>
+  <link rel="stylesheet" href="style.css" />
+</head>
+<body>
+  <!-- API Key Setup Screen -->
+  <div id="setup-screen" class="screen hidden">
+    <div class="setup-card">
+      <div class="setup-icon">🔑</div>
+      <h2>YouTube API キーを設定</h2>
+      <p>このアプリを使うには YouTube Data API v3 のキーが必要です。</p>
+      <a href="https://console.cloud.google.com/" target="_blank" class="link-btn">Google Cloud Console で取得 →</a>
+      <div class="input-group">
+        <input type="text" id="api-key-input" placeholder="AIza..." autocomplete="off" />
+        <button id="save-api-key" class="btn-primary">保存して開始</button>
+      </div>
+      <p class="note">※ APIキーはこのデバイスにのみ保存されます</p>
+    </div>
+  </div>
+
+  <!-- Main App -->
+  <div id="app" class="screen hidden">
+    <!-- Header -->
+    <header class="app-header">
+      <h1>🍳 レシピ動画</h1>
+      <button id="settings-btn" class="icon-btn" title="設定">⚙️</button>
+    </header>
+
+    <!-- Search Bar -->
+    <div class="search-section">
+      <div class="tab-bar">
+        <button class="tab active" data-tab="search">🔍 キーワード検索</button>
+        <button class="tab" data-tab="url">🔗 URL入力</button>
+      </div>
+
+      <div id="tab-search" class="tab-content active">
+        <div class="search-bar">
+          <input type="search" id="search-input" placeholder="例：簡単パスタ レシピ" />
+          <button id="search-btn" class="btn-primary">検索</button>
+        </div>
+      </div>
+
+      <div id="tab-url" class="tab-content">
+        <div class="search-bar">
+          <input type="url" id="url-input" placeholder="https://www.youtube.com/watch?v=..." />
+          <button id="url-btn" class="btn-primary">取得</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- Results -->
+    <main id="results" class="results-section">
+      <div class="empty-state">
+        <div class="empty-icon">🎬</div>
+        <p>料理動画を検索してレシピを確認しよう</p>
+      </div>
+    </main>
+  </div>
+
+  <!-- Recipe Detail Modal -->
+  <div id="recipe-modal" class="modal hidden">
+    <div class="modal-backdrop"></div>
+    <div class="modal-sheet">
+      <div class="modal-handle"></div>
+      <div class="modal-header">
+        <h2 id="modal-title"></h2>
+        <button id="modal-close" class="icon-btn">✕</button>
+      </div>
+      <div class="modal-body">
+        <div id="modal-thumbnail" class="video-thumb-container"></div>
+        <div id="modal-content"></div>
+        <a id="modal-youtube-link" href="#" target="_blank" class="youtube-btn">
+          ▶ YouTubeで動画を見る
+        </a>
+      </div>
+    </div>
+  </div>
+
+  <!-- Loading Spinner -->
+  <div id="loading" class="loading hidden">
+    <div class="spinner"></div>
+  </div>
+
+  <script src="app.js"></script>
+</body>
+</html>
