@@ -508,6 +508,27 @@ body {
 
 @keyframes spin { to { transform: rotate(360deg); } }
 
+/* Load More */
+.load-more-btn {
+  display: block;
+  width: 100%;
+  margin-top: 20px;
+  padding: 14px;
+  background: white;
+  border: 2px solid var(--border);
+  border-radius: 14px;
+  font-size: 15px;
+  font-weight: 700;
+  color: var(--text);
+  cursor: pointer;
+  transition: background 0.2s, border-color 0.2s;
+}
+
+.load-more-btn:active {
+  background: #f5f5f5;
+  border-color: #ccc;
+}
+
 /* Error */
 .error-msg {
   background: #fff0f0;

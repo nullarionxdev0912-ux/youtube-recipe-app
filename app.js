@@ -2,6 +2,9 @@ const API_KEY_STORAGE = 'yt_recipe_api_key';
 const YT_API_BASE = 'https://www.googleapis.com/youtube/v3';
 
 let apiKey = '';
+let lastQuery = '';
+let nextPageToken = null;
+let allVideos = [];
 
 // ---- Init ----
 function init() {
@@ -78,12 +81,16 @@ function saveApiKey() {
 async function handleSearch() {
   const q = document.getElementById('search-input').value.trim();
   if (!q) return;
+  lastQuery = q;
+  nextPageToken = null;
+  allVideos = [];
   setLoading(true);
   try {
-    const videos = await searchVideos(q);
-    // Batch-fetch full descriptions to check for recipe content
+    const { videos, nextToken } = await searchVideos(q, null);
+    nextPageToken = nextToken;
     const withRecipe = await enrichWithRecipeInfo(videos);
-    renderVideoList(withRecipe);
+    allVideos = withRecipe;
+    renderVideoList(allVideos, !!nextPageToken);
   } catch (e) {
     renderError(e.message);
   } finally {
@@ -91,17 +98,35 @@ async function handleSearch() {
   }
 }
 
-async function searchVideos(query) {
-  const url = `${YT_API_BASE}/search?part=snippet&q=${encodeURIComponent(query + ' レシピ 作り方')}&type=video&maxResults=15&key=${apiKey}&relevanceLanguage=ja`;
+async function handleLoadMore() {
+  if (!nextPageToken) return;
+  setLoading(true);
+  try {
+    const { videos, nextToken } = await searchVideos(lastQuery, nextPageToken);
+    nextPageToken = nextToken;
+    const withRecipe = await enrichWithRecipeInfo(videos);
+    allVideos = allVideos.concat(withRecipe);
+    renderVideoList(allVideos, !!nextPageToken);
+  } catch (e) {
+    renderError(e.message);
+  } finally {
+    setLoading(false);
+  }
+}
+
+async function searchVideos(query, pageToken) {
+  let url = `${YT_API_BASE}/search?part=snippet&q=${encodeURIComponent(query + ' レシピ 作り方')}&type=video&maxResults=15&key=${apiKey}&relevanceLanguage=ja`;
+  if (pageToken) url += `&pageToken=${pageToken}`;
   const res = await fetch(url);
   const data = await res.json();
   if (data.error) throw new Error(data.error.message);
-  return data.items.map(item => ({
+  const videos = data.items.map(item => ({
     id: item.id.videoId,
     title: item.snippet.title,
     channel: item.snippet.channelTitle,
     thumbnail: item.snippet.thumbnails.medium?.url || item.snippet.thumbnails.default?.url,
   }));
+  return { videos, nextToken: data.nextPageToken || null };
 }
 
 async function enrichWithRecipeInfo(videos) {
@@ -176,7 +201,7 @@ async function fetchVideoById(videoId) {
 }
 
 // ---- Render List ----
-function renderVideoList(videos) {
+function renderVideoList(videos, hasMore = false) {
   const container = document.getElementById('results');
   if (!videos.length) {
     container.innerHTML = '<div class="empty-state"><div class="empty-icon">😔</div><p>動画が見つかりませんでした</p></div>';
@@ -216,11 +241,17 @@ function renderVideoList(videos) {
       <div class="video-list">${noRecipe.map(cardHtml).join('')}</div>`;
   }
 
+  if (hasMore) {
+    html += `<button id="load-more-btn" class="load-more-btn">さらに15件読み込む</button>`;
+  }
+
   container.innerHTML = html;
 
   container.querySelectorAll('.video-card').forEach(card => {
     card.addEventListener('click', () => openRecipe(card.dataset.id));
   });
+
+  document.getElementById('load-more-btn')?.addEventListener('click', handleLoadMore);
 }
 
 function renderError(msg) {
